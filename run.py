@@ -6,16 +6,18 @@ import pandas as pd
 from sklearn.metrics import mean_absolute_error
 
 from utils import load_data, split_data, inference_model_training, recommendation
-from obfuscation import differential_privacy, random_obf
+from obfuscation import differential_privacy, random_obf, frapp_obf, sim_obf, PrivCheck
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--obf', type=str, default='random', help="DP, privcheck, random, frapp")
+    parser.add_argument('--obf', type=str, default='frapp', help="DP, random, frapp, similarity, privcheck")
     parser.add_argument('--beta', default=1, help="parameter of DP")
     parser.add_argument('--p_rand', default=0.5, help="parameter of random")
-    parser.add_argument('--p_frapp', default=0.5, help="parameter of frapp")
-    parser.add_argument('--deltaX', default=0.5, help="parameter of privcheck")
+    parser.add_argument('--gamma', default=100, help="parameter of frapp")
+    parser.add_argument('--percentage', default=0.5, help="parameter of similarity")
+    parser.add_argument('--deltaX', default=0.60, help="parameter of privcheck")
+    parser.add_argument('--cluster_num', default=10, help="cluster number for privcheck")
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--repeats', type=int, default=10)
     args = parser.parse_args()
@@ -36,6 +38,14 @@ if __name__ == '__main__':
         X_obf_dict, X_ori = differential_privacy(df_test, args.beta, repeats=args.repeats)
     elif args.obf == 'random':
         X_obf_dict, X_ori = random_obf(df_test, p_rand=args.p_rand, repeats=args.repeats)
+    elif args.obf == 'frapp':
+        X_obf_dict, X_ori = frapp_obf(df_test, gamma=args.gamma, repeats=args.repeats)
+    elif args.obf == 'similarity':
+        X_obf_dict, X_ori = sim_obf(df_test, p=args.percentage, repeats=args.repeats)
+    elif args.obf == 'privcheck':
+        age_list = list(set(df['age'].values))
+        age_list.sort()
+        X_obf_dict, X_ori = PrivCheck(df_test, age_list, args.deltaX, args.cluster_num, repeats=args.repeats)
 
     # inference performances & recommendation utility
     rec_oris = []
